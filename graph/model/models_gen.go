@@ -2,25 +2,45 @@
 
 package model
 
+import (
+	"time"
+)
+
 type Mutation struct {
 }
 
 type NewTodo struct {
-	Text   string `json:"text"`
+	Title  string `json:"title"`
 	UserID string `json:"userId"`
+}
+
+type NewUser struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
 }
 
 type Query struct {
 }
 
 type Todo struct {
-	ID   string `json:"id"`
-	Text string `json:"text"`
-	Done bool   `json:"done"`
-	User *User  `json:"user"`
+	ID        string    `json:"id"`
+	Title     string    `json:"title"`
+	Completed bool      `json:"completed"`
+	User      *User     `json:"user"`
+	UserID    string    `json:"userID"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+type UpdateTodoInput struct {
+	ID        string  `json:"id"`
+	Title     *string `json:"title,omitempty"`
+	Completed *bool   `json:"completed,omitempty"`
 }
 
 type User struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Email     string    `json:"email"`
+	Todos     []*Todo   `json:"todos"`
+	CreatedAt time.Time `json:"createdAt"`
 }

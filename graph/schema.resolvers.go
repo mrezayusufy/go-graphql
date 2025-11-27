@@ -8,18 +8,153 @@ package graph
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/mrezayusufy/go-graphql/graph/model"
 )
 
 // CreateTodo is the resolver for the createTodo field.
 func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error) {
-	panic(fmt.Errorf("not implemented: CreateTodo - createTodo"))
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var user *model.User
+	for _, u := range r.users {
+		if u.ID == input.UserID {
+			user = u
+			break
+		}
+
+	}
+	if user == nil {
+		return nil, fmt.Errorf("user not found")
+	}
+
+	newTodo := &model.Todo{
+		ID:        strconv.Itoa(r.todoID),
+		Title:     input.Title,
+		Completed: false,
+		UserID:    input.UserID,
+		User:      user,
+		CreatedAt: time.Now(),
+	}
+
+	r.todos = append(r.todos, newTodo)
+	r.todoID++
+
+	return newTodo, nil
+}
+
+// CreateUser is the resolver for the createUser field.
+func (r *mutationResolver) CreateUser(ctx context.Context, input model.NewUser) (*model.User, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, user := range r.users {
+		if user.Email == input.Email {
+			return nil, fmt.Errorf("user with email %s already exists", input.Email)
+		}
+	}
+
+	newUser := &model.User{
+		ID:        strconv.Itoa(r.userID),
+		Name:      input.Name,
+		Email:     input.Email,
+		CreatedAt: time.Now(),
+	}
+
+	r.users = append(r.users, newUser)
+	r.userID++
+
+	return newUser, nil
+}
+
+// UpdateTodo is the resolver for the updateTodo field.
+func (r *mutationResolver) UpdateTodo(ctx context.Context, input model.UpdateTodoInput) (*model.Todo, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, todo := range r.todos {
+		if todo.ID == input.ID {
+			if input.Title != nil {
+				todo.Title = *input.Title
+			}
+			if input.Completed != nil {
+				todo.Completed = *input.Completed
+			}
+			return todo, nil
+		}
+	}
+
+	return nil, fmt.Errorf("Todo Not Found")
+}
+
+// DeleteTodo is the resolver for the deleteTodo field.
+func (r *mutationResolver) DeleteTodo(ctx context.Context, id string) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for i, todo := range r.todos {
+		if todo.ID == id {
+			r.todos = append(r.todos[:i], r.todos[i+1:]...)
+			return true, nil
+		}
+	}
+	return false, fmt.Errorf("Todo not found")
 }
 
 // Todos is the resolver for the todos field.
 func (r *queryResolver) Todos(ctx context.Context) ([]*model.Todo, error) {
-	panic(fmt.Errorf("not implemented: Todos - todos"))
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.todos, nil
+}
+
+// Todo is the resolver for the todo field.
+func (r *queryResolver) Todo(ctx context.Context, id string) (*model.Todo, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, todo := range r.todos {
+		if todo.ID == id {
+			return todo, nil
+		}
+	}
+	return nil, fmt.Errorf("Todo not Found")
+}
+
+// users list
+func (r *queryResolver) Users(ctx context.Context) ([]*model.User, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.users, nil
+}
+
+// show user
+func (r *queryResolver) User(ctx context.Context, id string) (*model.User, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, user := range r.users {
+		if user.ID == id {
+			return user, nil
+		}
+	}
+	return nil, fmt.Errorf("User Not Found")
+}
+
+// TodosByUser is the resolver for the todosByUser field.
+func (r *queryResolver) TodosByUser(ctx context.Context, userID string) ([]*model.Todo, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var userTodos []*model.Todo
+	for _, todo := range r.todos {
+		if todo.UserID == userID {
+			userTodos = append(userTodos, todo)
+		}
+	}
+
+	return userTodos, nil
 }
 
 // Mutation returns MutationResolver implementation.
@@ -30,3 +165,4 @@ func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+
